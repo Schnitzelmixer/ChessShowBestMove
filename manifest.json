@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "ChessShowBestMove",
+  "version": "1.0",
+  "description": "Shows best move on chess.com self-analysis.",
+  "icons": {
+    "128": "images/icon-128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "content_scripts": [
+    {
+      "js": ["scripts/content.js"],
+      "matches": [
+        "https://www.chess.com/analysis/game/live/*"
+      ]
+    }
+  ]
+}
