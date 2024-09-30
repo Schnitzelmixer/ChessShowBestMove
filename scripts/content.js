@@ -72,19 +72,10 @@ let bestMovePieces = new Map()
 // 1: 'd6', 5: 'a2', ...
 let bestMoveSquares = new Map()
 
-document.addEventListener('keydown', (ev) => {
-  if (ev.key === "ArrowLeft") {
-    currentTurn--
-    insertHighlightElement()
-  }
-  if (ev.key === "ArrowRight") {
-    currentTurn++
-    insertHighlightElement()
-  }
-})
-
 setInterval(() => {
-  const moveCounterElement = document.querySelector('.move-san-premove')
+  const analysisLinesElement = document.querySelector('.analysis-view-lines')
+  if (!analysisLinesElement) return
+  const moveCounterElement = analysisLinesElement.querySelector('.move-san-premove')
   if (!moveCounterElement) return
 
   if (!finalSquareLetterToTransformMap || !finalSquareNumberToTransformMap) {
@@ -95,21 +86,21 @@ setInterval(() => {
 
   currentTurn = toMoveCounter(moveCounterElement.textContent)
 
-  const bestMoveParentElement = document.querySelector('.move-san-highlight')
+  const bestMoveParentElement = analysisLinesElement.querySelector('.move-san-highlight')
   if (!bestMoveParentElement) return
   const bestMoveSquareText = bestMoveParentElement.childNodes[0].textContent
 
-  if (bestMoveSquareText !== '') {
-    const finalBestMovePiece = null
-    const finalBestMoveSquare = simplifySquare(bestMoveSquareText)
-    bestMovePieces.set(currentTurn, finalBestMovePiece)
-    bestMoveSquares.set(currentTurn, finalBestMoveSquare)
+  let finalBestMovePiece = null;
+  let finalBestMoveSquare = null;
 
+  if (bestMoveSquareText !== '') {
+    finalBestMovePiece = null
+    finalBestMoveSquare = simplifySquare(bestMoveSquareText)
   } else {
     const bestMovePieceElement = bestMoveParentElement.querySelector('.move-san-figurine')
     const bestMoveSquareElement = bestMoveParentElement.querySelector('.move-san-afterfigurine')
 
-    const finalBestMovePiece = pieces.find(piece => {
+    finalBestMovePiece = pieces.find(piece => {
       for (const className of bestMovePieceElement.classList.values()) {
         if (className.includes(piece)) {
           return true
@@ -117,12 +108,19 @@ setInterval(() => {
       }
       return false
     }) ?? null
-    const finalBestMoveSquare = simplifySquare(bestMoveSquareElement.textContent)
 
+    finalBestMoveSquare = simplifySquare(bestMoveSquareElement.textContent)
+  }
+
+  if (
+    bestMovePieces.get(currentTurn) !== finalBestMovePiece ||
+    bestMoveSquares.get(currentTurn) !== finalBestMoveSquare
+  ) {
     bestMovePieces.set(currentTurn, finalBestMovePiece)
     bestMoveSquares.set(currentTurn, finalBestMoveSquare)
+    insertHighlightElement()
   }
-}, 200);
+}, 10);
 
 // 1., 1..., 2., ... to 1, 2, 3, ...
 function toMoveCounter(moveCounterString) {
@@ -145,10 +143,10 @@ function simplifySquare (moveSquare) {
 function insertHighlightElement() {
   if (!finalSquareLetterToTransformMap || !finalSquareNumberToTransformMap) return
 
-  const previousBestMoveSquare = bestMoveSquares.get(currentTurn - 1)
-  const previousBestMovePiece = bestMovePieces.get(currentTurn - 1)
+  const bestMoveSquare = bestMoveSquares.get(currentTurn)
+  const bestMovePiece = bestMovePieces.get(currentTurn)
 
-  if (!previousBestMoveSquare) {
+  if (!bestMoveSquare) {
     const toRemoveElement = document.getElementById(highlightElementId)
     if (toRemoveElement) {
       boardElement.removeChild(toRemoveElement)
@@ -156,15 +154,15 @@ function insertHighlightElement() {
     return
   }
 
-  const translateX = finalSquareLetterToTransformMap[previousBestMoveSquare.charAt(0)] - 3
-  const translateY = finalSquareNumberToTransformMap[previousBestMoveSquare.charAt(1)] - 7
+  const translateX = finalSquareLetterToTransformMap[bestMoveSquare.charAt(0)] - 3
+  const translateY = finalSquareNumberToTransformMap[bestMoveSquare.charAt(1)] - 7
 
   // Rochade edge case
   if (!translateX && !translateY) {
     highlightElement.textContent = 'Rochade'
     highlightElement.style.transform = 'translate(350%, 378%)'
   } else {
-    highlightElement.textContent = pieceToUnicodeMap[previousBestMovePiece]
+    highlightElement.textContent = pieceToUnicodeMap[bestMovePiece]
     highlightElement.style.transform = `translate(${translateX}%, ${translateY}%)`
   }
 
