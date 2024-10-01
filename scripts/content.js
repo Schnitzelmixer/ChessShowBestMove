@@ -60,128 +60,156 @@ const pieceToAbbreviationMap = {
   null: 'p'
 }
 
-const highlightWidth = getComputedStyle(document.querySelector('.piece')).width
-const highlightWidthNumber = highlightWidth.replace(/\D/g, '')
-const highlightStyle = {
-  position: 'absolute',
-  height: '12.5%',
-  width: '12.5%',
-  left: '0',
-  top: '0',
-  fontSize: `${highlightWidthNumber / 2}px`,
-  whiteSpace: 'nowrap',
-  backgroundSize: `${highlightWidthNumber / 3}px`,
-  backgroundRepeat: 'no-repeat',
-}
+const currentUrl = window.location.href
+let ignoreDom = false;
 
-const highlightElementId = 'customBestMoveHighlight'
-const highlightElement = document.createElement('div')
-highlightElement.id = highlightElementId
-Object.assign(highlightElement.style, highlightStyle)
-const boardElement = document.querySelector('.board')
-
-let currentTurn = 0
-// 1: 'knight', 5: 'bishop', ...
-let bestMovePieces = new Map()
-// 1: 'd6', 5: 'a2', ...
-let bestMoveSquares = new Map()
-
-setInterval(() => {
-  const analysisLinesElement = document.querySelector('.analysis-view-lines')
-  if (!analysisLinesElement) return
-  const moveCounterElement = analysisLinesElement.querySelector('.move-san-premove')
-  if (!moveCounterElement) return
-
-  if (!finalSquareLetterToTransformMap || !finalSquareNumberToTransformMap) {
-    const whiteIsBottom = document.querySelector('.coordinates').childNodes[0].textContent === '8';
-    finalSquareLetterToTransformMap = whiteIsBottom ? squareLetterToTransformMapWhiteBottom : squareLetterToTransformMapBlackBottom
-    finalSquareNumberToTransformMap = whiteIsBottom ? squareNumberToTransformMapWhiteBottom : squareNumberToTransformMapBlackBottom
+if (currentUrl.startsWith('https://www.chess.com/game/live/')) {
+  window.location.href = `https://www.chess.com/analysis/game/live/${currentUrl.substring(currentUrl.lastIndexOf('/') + 1)}?tab=analysis`
+} else if (currentUrl.startsWith('https://www.chess.com/analysis/game/live/')) {
+  const highlightWidth = getComputedStyle(document.querySelector('.piece')).width
+  const highlightWidthNumber = highlightWidth.replace(/\D/g, '')
+  const highlightStyle = {
+    position: 'absolute',
+    height: '12.5%',
+    width: '12.5%',
+    left: '0',
+    top: '0',
+    fontSize: `${highlightWidthNumber / 2}px`,
+    whiteSpace: 'nowrap',
+    backgroundSize: `${highlightWidthNumber / 3}px`,
+    backgroundRepeat: 'no-repeat',
   }
 
-  currentTurn = toMoveCounter(moveCounterElement.textContent)
+  const highlightElementId = 'customBestMoveHighlight'
+  const highlightElement = document.createElement('div')
+  highlightElement.id = highlightElementId
+  Object.assign(highlightElement.style, highlightStyle)
+  const boardElement = document.querySelector('.board')
 
-  const bestMoveParentElement = analysisLinesElement.querySelector('.move-san-highlight')
-  if (!bestMoveParentElement) return
-  const bestMoveSquareText = bestMoveParentElement.childNodes[0].textContent
+  let currentTurn = 0
+  // 1: 'knight', 5: 'bishop', ...
+  const bestMovePieces = new Map()
+  // 1: 'd6', 5: 'a2', ...
+  const bestMoveSquares = new Map()
 
-  let finalBestMovePiece = null;
-  let finalBestMoveSquare = null;
-
-  if (bestMoveSquareText !== '') {
-    finalBestMovePiece = null
-    finalBestMoveSquare = simplifySquare(bestMoveSquareText)
-  } else {
-    const bestMovePieceElement = bestMoveParentElement.querySelector('.move-san-figurine')
-    const bestMoveSquareElement = bestMoveParentElement.querySelector('.move-san-afterfigurine')
-
-    finalBestMovePiece = pieces.find(piece => {
-      for (const className of bestMovePieceElement.classList.values()) {
-        if (className.includes(piece)) {
-          return true
-        }
+  // When clicking prev or next (or arrow keys), the chess.com analysis lines are not updated instantly,
+  // only the color of the piece and the move counter changes instantly. As a result the analysis
+  // is false for a few ms when clicking prev or next. Therefore, some parts of the DOM should be ignored for a short time.
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+      const toRemoveElement = document.getElementById(highlightElementId)
+      if (toRemoveElement) {
+        boardElement.removeChild(toRemoveElement)
       }
-      return false
-    }) ?? null
-
-    finalBestMoveSquare = simplifySquare(bestMoveSquareElement.textContent)
-  }
-
-  if (
-    bestMovePieces.get(currentTurn) !== finalBestMovePiece ||
-    bestMoveSquares.get(currentTurn) !== finalBestMoveSquare
-  ) {
-    bestMovePieces.set(currentTurn, finalBestMovePiece)
-    bestMoveSquares.set(currentTurn, finalBestMoveSquare)
-    insertHighlightElement()
-  }
-}, 10);
-
-// 1., 1..., 2., ... to 1, 2, 3, ...
-function toMoveCounter(moveCounterString) {
-  let moveCounter = (parseInt(moveCounterString.replaceAll('.', '')) * 2) - 1
-  if (moveCounterString.includes("...")) {
-    moveCounter++
-  }
-  return moveCounter
-}
-
-function simplifySquare (moveSquare) {
-  if (moveSquare === 'O-O') {
-    return moveSquare
-  }
-  // If a move gives check then there is a plus sign at the end.
-  const withoutPlus = moveSquare.replace('+', '')
-  return withoutPlus.substring(withoutPlus.length - 2)
-}
-
-function insertHighlightElement() {
-  if (!finalSquareLetterToTransformMap || !finalSquareNumberToTransformMap) return
-
-  const bestMoveSquare = bestMoveSquares.get(currentTurn)
-  const bestMovePiece = bestMovePieces.get(currentTurn)
-
-  if (!bestMoveSquare) {
-    const toRemoveElement = document.getElementById(highlightElementId)
-    if (toRemoveElement) {
-      boardElement.removeChild(toRemoveElement)
+      ignoreDom = true
+      setTimeout(() => ignoreDom = false, 50)
     }
-    return
+  })
+
+  setInterval(() => {
+    const analysisLinesElement = document.querySelector('.analysis-view-lines')
+    if (!analysisLinesElement) return
+    const moveCounterElement = analysisLinesElement.querySelector('.move-san-premove')
+    if (!moveCounterElement) return
+    currentTurn = toMoveCounter(moveCounterElement.textContent)
+
+    if (ignoreDom) {
+      if (bestMovePieces.has(currentTurn) && bestMoveSquares.has(currentTurn)) {
+        insertHighlightElement()
+      }
+      return;
+    }
+
+    if (!finalSquareLetterToTransformMap || !finalSquareNumberToTransformMap) {
+      const whiteIsBottom = document.querySelector('.coordinates').childNodes[0].textContent === '8';
+      finalSquareLetterToTransformMap = whiteIsBottom ? squareLetterToTransformMapWhiteBottom : squareLetterToTransformMapBlackBottom
+      finalSquareNumberToTransformMap = whiteIsBottom ? squareNumberToTransformMapWhiteBottom : squareNumberToTransformMapBlackBottom
+    }
+
+    const bestMoveParentElement = analysisLinesElement.querySelector('.move-san-highlight')
+    if (!bestMoveParentElement) return
+    const bestMoveSquareText = bestMoveParentElement.childNodes[0].textContent
+
+    let finalBestMovePiece = null;
+    let finalBestMoveSquare = null;
+
+    if (bestMoveSquareText !== '') {
+      finalBestMovePiece = null
+      finalBestMoveSquare = simplifySquare(bestMoveSquareText)
+    } else {
+      const bestMovePieceElement = bestMoveParentElement.querySelector('.move-san-figurine')
+      const bestMoveSquareElement = bestMoveParentElement.querySelector('.move-san-afterfigurine')
+
+      finalBestMovePiece = pieces.find(piece => {
+        for (const className of bestMovePieceElement.classList.values()) {
+          if (className.includes(piece)) {
+            return true
+          }
+        }
+        return false
+      }) ?? null
+
+      finalBestMoveSquare = simplifySquare(bestMoveSquareElement.textContent)
+    }
+
+    if (
+      bestMovePieces.get(currentTurn) !== finalBestMovePiece ||
+      bestMoveSquares.get(currentTurn) !== finalBestMoveSquare
+    ) {
+      bestMovePieces.set(currentTurn, finalBestMovePiece)
+      bestMoveSquares.set(currentTurn, finalBestMoveSquare)
+      insertHighlightElement()
+    }
+  }, 10);
+
+  // 1., 1..., 2., ... to 1, 2, 3, ...
+  function toMoveCounter(moveCounterString) {
+    let moveCounter = (parseInt(moveCounterString.replaceAll('.', '')) * 2) - 1
+    if (moveCounterString.includes("...")) {
+      moveCounter++
+    }
+    return moveCounter
   }
 
-  const translateX = finalSquareLetterToTransformMap[bestMoveSquare.charAt(0)] - 3
-  const translateY = finalSquareNumberToTransformMap[bestMoveSquare.charAt(1)] - 1
-
-  // Rochade edge case
-  if (!translateX && !translateY) {
-    highlightElement.style.backgroundImage = ''
-    highlightElement.innerHTML = 'Rochier jetzt <br> endlich du <br> Hurensohn.'
-    highlightElement.style.transform = 'translate(300%, 285%)'
-  } else {
-    const currentColor = currentTurn % 2 === 0 ? 'b' : 'w';
-    highlightElement.innerHTML = ''
-    highlightElement.style.backgroundImage = `url(${pieceAssetsPath}${currentColor}${pieceToAbbreviationMap[bestMovePiece]}.png)`
-    highlightElement.style.transform = `translate(${translateX}%, ${translateY}%)`
+  function simplifySquare(moveSquare) {
+    if (moveSquare === 'O-O') {
+      return moveSquare
+    }
+    // If a move gives check then there is a plus sign at the end.
+    const withoutPlus = moveSquare.replace('+', '')
+    return withoutPlus.substring(withoutPlus.length - 2)
   }
 
-  boardElement.appendChild(highlightElement)
+  function insertHighlightElement() {
+    if (!finalSquareLetterToTransformMap || !finalSquareNumberToTransformMap) return
+
+    const bestMoveSquare = bestMoveSquares.get(currentTurn)
+    const bestMovePiece = bestMovePieces.get(currentTurn)
+
+    if (!bestMoveSquare) {
+      const toRemoveElement = document.getElementById(highlightElementId)
+      if (toRemoveElement) {
+        boardElement.removeChild(toRemoveElement)
+      }
+      return
+    }
+
+    const translateX = finalSquareLetterToTransformMap[bestMoveSquare.charAt(0)] - 3
+    const translateY = finalSquareNumberToTransformMap[bestMoveSquare.charAt(1)] - 1
+
+    // Rochade edge case
+    if (!translateX && !translateY) {
+      highlightElement.style.backgroundImage = ''
+      highlightElement.innerHTML = 'Rochier jetzt <br> endlich du <br> Hurensohn.'
+      highlightElement.style.transform = 'translate(300%, 285%)'
+    } else {
+      const currentColor = currentTurn % 2 === 0 ? 'b' : 'w';
+      highlightElement.innerHTML = ''
+      highlightElement.style.backgroundImage = `url(${pieceAssetsPath}${currentColor}${pieceToAbbreviationMap[bestMovePiece]}.png)`
+      highlightElement.style.transform = `translate(${translateX}%, ${translateY}%)`
+    }
+
+    boardElement.appendChild(highlightElement)
+  }
 }
+
