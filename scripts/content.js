@@ -50,16 +50,30 @@ const pieceToUnicodeMap = {
   knight: '\u265E',
   null: '\u265F'
 }
-const highlightFontSize = getComputedStyle(document.querySelector('.piece')).width
-const highlightFontSizeNumber = highlightFontSize.replace(/\D/g, '')
+const pieceAssetsPath = 'https://assets-themes.chess.com/image/ejgfv/150/';
+const pieceToAbbreviationMap = {
+  king: 'k',
+  queen: 'q',
+  rook: 'r',
+  bishop: 'b',
+  knight: 'n',
+  null: 'p'
+}
+
+const highlightWidth = getComputedStyle(document.querySelector('.piece')).width
+const highlightWidthNumber = highlightWidth.replace(/\D/g, '')
 const highlightStyle = {
   position: 'absolute',
   height: '12.5%',
   width: '12.5%',
   left: '0',
   top: '0',
-  fontSize: `${highlightFontSizeNumber / 4}px`,
+  fontSize: `${highlightWidthNumber / 2}px`,
+  whiteSpace: 'nowrap',
+  backgroundSize: `${highlightWidthNumber / 3}px`,
+  backgroundRepeat: 'no-repeat',
 }
+
 const highlightElementId = 'customBestMoveHighlight'
 const highlightElement = document.createElement('div')
 highlightElement.id = highlightElementId
@@ -155,14 +169,17 @@ function insertHighlightElement() {
   }
 
   const translateX = finalSquareLetterToTransformMap[bestMoveSquare.charAt(0)] - 3
-  const translateY = finalSquareNumberToTransformMap[bestMoveSquare.charAt(1)] - 7
+  const translateY = finalSquareNumberToTransformMap[bestMoveSquare.charAt(1)] - 1
 
   // Rochade edge case
   if (!translateX && !translateY) {
-    highlightElement.textContent = 'Rochade'
-    highlightElement.style.transform = 'translate(350%, 378%)'
+    highlightElement.style.backgroundImage = ''
+    highlightElement.innerHTML = 'Rochier jetzt <br> endlich du <br> Hurensohn.'
+    highlightElement.style.transform = 'translate(300%, 285%)'
   } else {
-    highlightElement.textContent = pieceToUnicodeMap[bestMovePiece]
+    const currentColor = currentTurn % 2 === 0 ? 'b' : 'w';
+    highlightElement.innerHTML = ''
+    highlightElement.style.backgroundImage = `url(${pieceAssetsPath}${currentColor}${pieceToAbbreviationMap[bestMovePiece]}.png)`
     highlightElement.style.transform = `translate(${translateX}%, ${translateY}%)`
   }
 
