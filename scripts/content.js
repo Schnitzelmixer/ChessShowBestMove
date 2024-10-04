@@ -175,9 +175,9 @@ if (currentUrl.startsWith('https://www.chess.com/game/live/')) {
     if (moveSquare === 'O-O') {
       return moveSquare
     }
-    // If a move gives check then there is a plus sign at the end.
-    const withoutPlus = moveSquare.replace('+', '')
-    return withoutPlus.substring(withoutPlus.length - 2)
+    // If a move gives check or mate then there is a plus sign or a hashtag at the end.
+    const withoutPlusAndHashtag = moveSquare.replace('+', '').replace('#', '')
+    return withoutPlusAndHashtag.substring(withoutPlusAndHashtag.length - 2)
   }
 
   function insertHighlightElement() {
@@ -198,7 +198,7 @@ if (currentUrl.startsWith('https://www.chess.com/game/live/')) {
     const translateY = finalSquareNumberToTransformMap[bestMoveSquare.charAt(1)] - 1
 
     // Rochade edge case
-    if (!translateX && !translateY) {
+    if (!translateX || !translateY) {
       highlightElement.style.backgroundImage = ''
       highlightElement.innerHTML = 'Rochier jetzt <br> endlich du <br> Hurensohn.'
       highlightElement.style.transform = 'translate(300%, 285%)'
